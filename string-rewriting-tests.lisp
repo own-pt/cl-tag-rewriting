@@ -20,6 +20,8 @@
   (test-rule (list "*_PCP" "*.ADJ")  "foo_PCP"  "foo_PCP"))
 
 (defun test-rules-happy-path ()
+  (test-rule (list "?_?" "?_PU") "this_IS foo_BAR baz_QWE foo_TYP ?_?" "this_IS foo_BAR baz_QWE foo_TYP ?_PU")
+  (test-rule (list "._." "._PU") "this_IS foo_BAR baz_QWE foo_TYP ._." "this_IS foo_BAR baz_QWE foo_TYP ._PU")
   (test-rule (list "foo_BAR baz_QWE" "foo_BAR baz_EWQ") "this_IS foo_BAR baz_QWE foo_TYP" "this_IS foo_BAR baz_EWQ foo_TYP")
   (test-rule (list "*_N passad*_PCP" "*_N passad*_ADJ") "foo_N passados_PCP" "foo_N passados_ADJ")
   (test-rule (list "*_PCP ._." "*_ADJ ._.") "adequadas_PCP a_PREP a_ART" "adequadas_PCP a_PREP a_ART")

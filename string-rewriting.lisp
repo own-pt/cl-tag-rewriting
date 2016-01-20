@@ -6,7 +6,9 @@
 
 (in-package :string-rewriting)
 
-(defparameter *special-chars* "([\\.])")
+(defparameter *special-chars* "([\\.\\?\\]\\[\\)\\(])")
+
+(defparameter *debug-rules* nil)
 
 (defun trim (s)
   (string-trim '(#\Space #\Return #\Newline #\Tab) s))
@@ -58,8 +60,10 @@
 
 (defun compile-rule (rule)
   (if (valid-rule rule)
-      (list (create-scanner (compile-lhs (first rule)))
-            (compile-rhs (second rule)) (third rule))
+      (let ((compiled-lhs (compile-lhs (first rule)))
+	    (compiled-rhs (compile-rhs (second rule))))
+	(list (create-scanner compiled-lhs)
+	      compiled-rhs (third rule) compiled-lhs compiled-rhs))
       nil))
 
 (defun compile-rules (rules)
@@ -67,7 +71,11 @@
 
 (defun apply-rule (rule line)
   (if rule
-      (regex-replace-all (car rule) line (cadr rule))
+      (multiple-value-bind (result matchp) 
+	  (regex-replace-all (first rule) line (second rule))
+	(when (and *debug-rules* matchp)
+	  (format *error-output* "[~a] => [~a] (~a)~%~a~%~a~%~%##~%" (fourth rule) (fifth rule) (third rule) line result))
+	result)
       line))
   
 (defun apply-rules (rules line)
