@@ -1,0 +1,7 @@
+(load "string-rewriting")
+(load "string-rewriting-tests")
+(load "pcp")
+(in-package :string-rewriting)
+(terpri)
+(test-all)
+(sb-ext:quit)
