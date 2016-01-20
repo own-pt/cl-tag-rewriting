@@ -1,2 +1,2 @@
 # cl-pcp
-Rule base string rewriting system
+Rule based string rewriting system
