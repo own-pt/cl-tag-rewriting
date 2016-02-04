@@ -6,6 +6,11 @@
     (unless (string-equal result expected)
       (format t "Expected [~a] got [~a]~%" expected result))))
 
+(defun test-regex-rule (rule input expected)
+  (let ((result (apply-rule (compile-regex-rule rule) input)))
+    (unless (string-equal result expected)
+      (format t "Expected [~a] got [~a]~%" expected result))))
+
 (defun test-rules (rules input expected)
   (let ((result (apply-rules (compile-rules rules) input)))
     (unless (string-equal result expected)
@@ -18,6 +23,52 @@
 
 (defun test-invalid-rules ()
   (test-rule (list "*_PCP" "*.ADJ")  "foo_PCP"  "foo_PCP"))
+
+(defun test-strict-matching ()
+  (test-rule (list "J_N" "J_NOUN") "Joao_N f" "Joao_N f")
+  (test-rule (list "J_N" "J_NOUN") "J_N f"  "J_NOUN f")
+
+  (test-rule (list "J_N" "J_NOUN") "Joao_N" "Joao_N")
+  (test-rule (list "J_N" "J_NOUN") "J_N" "J_NOUN")
+
+  (test-rule (list "*_N" "*_NOUN") "Joao_N" "Joao_NOUN")
+
+  (test-rule (list "*_N" "*_NOUN") "Joao_NOUN foi_V" "Joao_NOUN foi_V")
+  (test-rule (list "*_N" "*_NOUN") "Joao_N foi_V" "Joao_NOUN foi_V"))
+
+;; 1- transformar "_ART *_ADJ seguido por qualquer coisa que não seja *_N" em "_ART *_N seguido por qualquer coisa que não seja *_N"
+;; 2- Transformar uma palavra do tipo "algo-algumacoisa_N" (exemplo: ex-presidente_N) em "algo_PRT -_PUNCT algumacoisa_N"
+;; 3- Transformar qualquer número marcado como _N, mesmo que contenha os caracteres , . º (exemplos: 1,5_N; 1.991_N, 1º_N), em _NUM.
+
+;; Para isso, o Alexandre criou as seguintes regras:
+
+;; 1-      (define-rule "@{\\w+_ART} @{\\w+_ADJ} @{\\w+}_@{^N}" "@{\\1} @{\\2_N} @{\\3}_@{\\4}" :mm)
+;; 2-      (define-rule "@{[\\w]+}-@{\\w+}_@{\\w+}" "@{\\1}_PRT -_PUNCT @{\\2} @{\\3}" :mm)
+;; 3-      (define-rule "@{[\\d\\,\\.\\º]+}_N" "@{[\\d\\,\\.\\º]+}_NUM" :mm)
+
+(defun test-regex-rules ()
+  (test-regex-rule (list "(\\w+)_ART (\\w+)_ADJ (\\w+)_([^N])" "\\1_ART \\2_N \\3_\\4") "os_ART velhos_ADJ riram_V" "os_ART velhos_N riram_V")
+  (test-regex-rule (list "(\\w+)_ART (\\w+)_ADJ (\\w+)_([^N])" "\\1_ART \\2_N \\3_\\4") "os_ART velhos_ADJ não_ADV correm_V" "os_ART velhos_N não_ADV correm_V")
+  (test-regex-rule (list "(\\w+)_ART (\\w+)_ADJ (\\w+)_([^N])" "\\1_ART \\2_N \\3_\\4") "os_ART velhos_ADJ foram_AUX atendidos_V" "os_ART velhos_N foram_AUX atendidos_V")
+  (test-regex-rule (list "(\\w+)_ART (\\w+)_ADJ (\\w+)_([^N])" "\\1_ART \\2_N \\3_\\4") "os_ART velhos_ADJ soldados_N reclamaram_V" "os_ART velhos_ADJ soldados_N reclamaram_V")
+  (test-regex-rule (list "(\\w+)-(\\w+)_(\\w+)(\\s+)" "\\1_PRT -_PUNCT \\2_\\3\\4") "ex-presidente_N foo" "ex_PRT -_PUNCT presidente_N foo") 
+  (test-regex-rule (list "(\\w+)-(\\w+)_(\\w+)$" "\\1_PRT -_PUNCT \\2_\\3") "ex-presidente_N" "ex_PRT -_PUNCT presidente_N") 
+  (test-regex-rule (list "([\\d\\,\\.\\º]+)_N(\\s+)" "\\1_NUM\\2") "Ele tinha 1000_N macas." "Ele tinha 1000_NUM macas.")
+
+  (test-regex-rule (list "([\\d\\,\\.\\º]+)_N(\\W*)" "\\1_NUM\\2") "Ele tinha 1000_N" "Ele tinha 1000_NUM")
+  (test-regex-rule (list "([\\d\\,\\.\\º]+)_N(\\W*)" "\\1_NUM\\2") "Ele tinha 1000_N foobar." "Ele tinha 1000_NUM foobar.")
+  (test-regex-rule (list "([\\d\\,\\.\\º]+)_N(\\W*)" "\\1_NUM\\2") "Ele tinha 1000_N!" "Ele tinha 1000_NUM!")
+  (test-regex-rule (list "([\\d\\,\\.\\º]+)_N(\\W*)" "\\1_NUM\\2") "Ele tinha 1000_N, foobar." "Ele tinha 1000_NUM, foobar.")
+
+
+  (test-regex-rule (list "([\\d\\,\\.\\º]+)_N$" "\\1_NUM") "1000_N" "1000_NUM")
+  (test-regex-rule (list "([\\d\\,\\.\\º]+)_N" "\\1_NUM") "1000_N" "1000_NUM")
+  (test-regex-rule (list "([\\d\\,\\.\\º]+)_N" "\\1_NUM") "1,000_N" "1,000_NUM")
+  (test-regex-rule (list "([\\d\\,\\.\\º]+)_N" "\\1_NUM") "10.00_N" "10.00_NUM")
+  (test-regex-rule (list "([\\d\\,\\.\\º]+)_N" "\\1_NUM") "1000º_N" "1000º_NUM"))
+
+(defun test-escaping ()
+  (test-rule (list "?_?" "?_PU") "this_IS foo_BAR baz_QWE foo_TYP ?_?" "this_IS foo_BAR baz_QWE foo_TYP ?_PU"))
 
 (defun test-rules-happy-path ()
   (test-rule (list "?_?" "?_PU") "this_IS foo_BAR baz_QWE foo_TYP ?_?" "this_IS foo_BAR baz_QWE foo_TYP ?_PU")
@@ -57,6 +108,9 @@
   (test-rule (list "*_ADJ e_KC *_PCP" "*_ADJ e_KC *_ADJ") "Quarta-feira_N ,_, a_PREP as_ART 20h_N ,_, o_ART pregão_N deve_VAUX vender_V 30_NUM animais_N ,_, entre_PREP nacionais_ADJ e_KC importados_PCP ._." "Quarta-feira_N ,_, a_PREP as_ART 20h_N ,_, o_ART pregão_N deve_VAUX vender_V 30_NUM animais_N ,_, entre_PREP nacionais_ADJ e_KC importados_ADJ ._."))
 
 (defun test-all ()
+  (test-regex-rules)
+  (test-escaping)
+  (test-strict-matching)
   (test-rules-happy-path)
   (test-multiple-rules)
   (test-invalid-rules))
