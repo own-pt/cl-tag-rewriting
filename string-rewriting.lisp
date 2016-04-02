@@ -39,7 +39,7 @@
   (flet ((process (s) 
            (format nil "~a_~a" (compile-lhs-pattern (first s)) 
                    (compile-lhs-type (second s)))))
-    (format nil "~{~a~^ ~}(\\s+|$)" (mapcar #'process (parse-side (escape-special-chars string))))))
+    (format nil "(?:\\s+|^)~{~a~^ ~}(?=\\s+|$)" (mapcar #'process (parse-side (escape-special-chars string))))))
 
 (defun compile-rhs (string)
   (let ((count 0))
@@ -47,7 +47,7 @@
              (incf count)
              (format nil "~a_~a" (compile-rhs-pattern (first s) count) 
 		      (compile-rhs-type (second s)))))
-      (format nil "~{~a~^ ~} " (mapcar #'process (parse-side string))))))
+      (format nil " ~{~a~^ ~}" (mapcar #'process (parse-side string))))))
 
 (defun valid-length (rule)
   (or  (= 2 (length rule)) (= 3 (length rule))))
@@ -88,7 +88,7 @@
       (multiple-value-bind (result matchp) 
 	  (regex-replace-all (first rule) line (second rule))
 	(when (and *debug-rules* matchp)
-	  (format *error-output* "[~a] => [~a] (~a)~%~a~%~a~%~%##~%" (fourth rule) (fifth rule) (third rule) line result))
+	  (format *error-output* "[~a] => [~a] (~a)~%:~a:~%:~a:~%~%##~%" (fourth rule) (fifth rule) (third rule) line result))
 	(trim result))
       line))
 
