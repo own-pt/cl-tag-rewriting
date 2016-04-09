@@ -8,8 +8,19 @@
 
 (defparameter *special-chars* "([\\.\\?\\]\\[\\)\\(])")
 
-(defparameter *debug-rules* nil)
+(defparameter *debug-rules* t)
 (defparameter *debug-compilation* nil)
+
+(defmacro with-open-files (args &body body)
+  (case (length args)
+    ((0)
+     `(progn ,@body))
+    ((1)
+     `(with-open-file ,(first args) ,@body))
+    (t `(with-open-file ,(first args)
+	  (with-open-files
+	      ,(rest args) ,@body)))))
+
 
 (defun trim (s)
   (string-trim '(#\Space #\Return #\Newline #\Tab) s))
@@ -88,23 +99,23 @@
       (multiple-value-bind (result matchp) 
 	  (regex-replace-all (first rule) line (second rule))
 	(when (and *debug-rules* matchp)
-	  (format *error-output* "[~a] => [~a] (~a)~%:~a:~%:~a:~%~%##~%" (fourth rule) (fifth rule) (third rule) line result))
+	  (format *error-output* "[~a] => [~a] (~a)~%:~a:~%:~a:~%~%##~%"
+		  (fourth rule) (fifth rule) (third rule) line result))
 	(trim result))
       line))
 
 (defun apply-rules (rules line)
   (let ((result line))
-    (dolist (rule rules)
-      (setf result (apply-rule rule result)))
-    result))
+    (dolist (rule rules result)
+      (setf result (apply-rule rule result)))))
 
 (defun process-file (rules filename-in filename-out)
-  (with-open-file (in filename-in :direction :input)
-    (with-open-file (out filename-out :direction :output :if-exists :supersede)
-      (do ((line (read-line in nil)
-                 (read-line in nil)))
-          ((null line))
-        (write-line (apply-rules rules (trim line)) out)))))
+  (with-open-files ((in filename-in :direction :input)
+		    (out filename-out :direction :output :if-exists :supersede))
+    (do ((line (read-line in nil)
+	       (read-line in nil)))
+	((null line))
+      (write-line (apply-rules rules (trim line)) out))))
 
 ;; (defmacro define-rule (&rest args)
 ;;   (let* ((pos (position '=> args))
