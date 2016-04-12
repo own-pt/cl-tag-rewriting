@@ -8,8 +8,8 @@
 					   (car tk) "_" (cadr tk) "_" "_" "0" "_" "_" "_"))
 			sent)))
     (dolist (l lines)
-      (write-line (reduce (lambda (as tk) (format nil "~a~a~a" as #\Tab tk)) l) out)
-      (write-line "" out))))
+      (write-line (reduce (lambda (as tk) (format nil "~a~a~a" as #\Tab tk)) l) out))
+    (write-line "" out)))
 
 
 (defun convert-conllu (input output)
@@ -21,6 +21,7 @@
 	  ((null line)
 	   (reverse res))
 	(write-conllu-lines (mapcar (lambda (tk) (cl-ppcre:split "_" tk))
-				    (cl-ppcre:split "[ ]+" line)) out)))))
+				    (cl-ppcre:split "[ ]+" line))
+			    out)))))
 
 

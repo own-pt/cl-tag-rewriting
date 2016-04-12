@@ -5,17 +5,6 @@
 (defparameter *debug-rules* nil)
 (defparameter *debug-compilation* nil)
 
-;; (defmacro with-open-files-1 (args &rest body)
-;;   (let ((res `(progn ,@body)))
-;;     (reduce (lambda (acc e) `(with-open-file (,@e) ,acc)) args
-;; 	    :initial-value res)))
-
-;; (defmacro with-open-files-2 (args &rest body)
-;;   (let ((res `(progn ,@body)))
-;;     (dolist (a (reverse args) res)
-;;       (setf res `(with-open-file (,@a)
-;; 		   ,res)))))
-
 
 (defmacro with-open-files (args &body body)
   (case (length args)
@@ -27,12 +16,12 @@
 	  (with-open-files
 	      ,(rest args) ,@body)))))
 
-
 (defun trim (s)
   (string-trim '(#\Space #\Return #\Newline #\Tab) s))
 
 (defun escape-special-chars (string)
   (regex-replace-all *special-chars* string '("\\" :match)))
+
 
 (defun parse-side (string)
   (mapcar (lambda (x) (split-sequence #\_ x :remove-empty-subseqs t)) 
@@ -141,7 +130,7 @@
 (defun compile-rules (rules)
   (let (grammar)
     (dolist (r rules (reverse grammar))
-      (case (car r)
+      (ecase (car r)
 	((->)  (push (compile-rule (cdr r)) grammar))
 	((r->) (push (compile-regex-rule (cdr r)) grammar))))))
 
