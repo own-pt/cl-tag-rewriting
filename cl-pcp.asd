@@ -8,4 +8,5 @@
   :depends-on (#:cl-ppcre #:split-sequence)
   :components ((:file "package")
 	       (:file "rewriting"        :depends-on ("package"))
+	       (:file "tests"            :depends-on ("rewriting"))
 	       (:file "macmorpho-conllu" :depends-on ("package"))))
