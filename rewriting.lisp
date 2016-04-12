@@ -1,7 +1,7 @@
 
 (in-package :string-rewriting)
 
-(defparameter *special-chars* "([\\.\\?\\]\\[\\)\\(])")
+(defparameter *special-chars* "([\\=\\|\\-\\.\\?\\]\\[\\)\\(])")
 (defparameter *debug-rules* nil)
 (defparameter *debug-compilation* nil)
 
@@ -24,7 +24,7 @@
 
 
 (defun parse-side (string)
-  (mapcar (lambda (x) (split-sequence #\_ x :remove-empty-subseqs t)) 
+  (mapcar (lambda (x) (split-sequence #\_ x)) 
           (split-sequence #\Space string :remove-empty-subseqs t)))
 
 (defun compile-lhs-pattern (string)
@@ -63,10 +63,11 @@
              (= 2 (length token)))
            (valid-side (side)
              (every #'identity (mapcar #'valid-token (parse-side side)))))
-    (when (valid-length rule)
-      (and (valid-side (car rule)) (valid-side (cadr rule))))))
+    (and (valid-length rule)
+	 (valid-side (car rule)) (valid-side (cadr rule)))))
 
-(defun valid-regex-rule (rule) (valid-length rule))
+(defun valid-regex-rule (rule)
+  (valid-length rule))
 
 (defun compile-rule (rule)
   (if (valid-rule rule)
@@ -76,15 +77,17 @@
           (format *debug-io* "compiled-lhs = ~a~%compiled-rhs = ~a~%" compiled-lhs compiled-rhs))
 	(list (create-scanner compiled-lhs)
 	      compiled-rhs (third rule) compiled-lhs compiled-rhs))
-      nil))
+      (error rule "invalid rule")))
 
 (defun compile-regex-rule (rule)
   (if (valid-regex-rule rule)
       (let ((compiled-lhs (first rule))
 	    (compiled-rhs (second rule)))
+	(when *debug-compilation*
+          (format *debug-io* "compiled-lhs = ~a~%compiled-rhs = ~a~%" compiled-lhs compiled-rhs))
 	(list (create-scanner compiled-lhs)
 	      compiled-rhs (third rule) compiled-lhs compiled-rhs))
-      nil))
+      (error rule "invalid rule")))
 
 
 (defun apply-rule (rule line)
@@ -131,9 +134,11 @@
   (let (grammar)
     (dolist (r rules (reverse grammar))
       (ecase (car r)
-	((->)  (push (compile-rule (cdr r)) grammar))
-	((r->) (push (compile-regex-rule (cdr r)) grammar))))))
+	((->)  (push (compile-rule (list (cadr r) (caddr r) (cdddr r))) grammar))
+	((r->) (push (compile-regex-rule (list (cadr r) (caddr r) (cdddr r))) grammar))))))
 
+
+;; statistics
 
 (defun save-grammar-doc (grammar filename)
   (let* ((len (length grammar))
@@ -150,9 +155,17 @@
     (do ((line (read-line in nil nil)
 	       (read-line in nil nil)))
 	((null line))
-      (let ((data (split-sequence #\Space line)))
+      (let ((data (split-sequence #\Space line :remove-empty-subseqs t)))
 	(mapcar (lambda (id) (format out "~a ~a ~a~%" (car data) (cadr data) id))
 		(cddr data))))))
 
-
-
+(defun rules-not-used (rules-file tablog-file &key (numeric nil))
+  (with-open-files ((in tablog-file))
+    (let ((tb (make-hash-table))
+	  (rules (read-rules rules-file))) 
+      (loop for line = (read-line in nil 'foo)
+	    until (eq line 'foo)
+	    do (incf (gethash (parse-integer (nth 2 (cl-ppcre:split "[ ]" line))) tb 0)))
+      (loop for x from 0 to (length rules)
+	    when (not (gethash x tb))
+	    collect (if numeric x (nth x rules))))))
