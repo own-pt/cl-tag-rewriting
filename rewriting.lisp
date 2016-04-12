@@ -1,15 +1,21 @@
-(ql:quickload :cl-ppcre)
-(ql:quickload :split-sequence)
-
-(defpackage :string-rewriting
-  (:use :cl :cl-ppcre :split-sequence))
 
 (in-package :string-rewriting)
 
 (defparameter *special-chars* "([\\.\\?\\]\\[\\)\\(])")
-
-(defparameter *debug-rules* t)
+(defparameter *debug-rules* nil)
 (defparameter *debug-compilation* nil)
+
+;; (defmacro with-open-files-1 (args &rest body)
+;;   (let ((res `(progn ,@body)))
+;;     (reduce (lambda (acc e) `(with-open-file (,@e) ,acc)) args
+;; 	    :initial-value res)))
+
+;; (defmacro with-open-files-2 (args &rest body)
+;;   (let ((res `(progn ,@body)))
+;;     (dolist (a (reverse args) res)
+;;       (setf res `(with-open-file (,@a)
+;; 		   ,res)))))
+
 
 (defmacro with-open-files (args &body body)
   (case (length args)
@@ -91,8 +97,6 @@
 	      compiled-rhs (third rule) compiled-lhs compiled-rhs))
       nil))
 
-(defun compile-rules (rules)
-  (mapcar #'compile-rule rules))
 
 (defun apply-rule (rule line)
   (if rule
@@ -101,25 +105,65 @@
 	(when (and *debug-rules* matchp)
 	  (format *error-output* "[~a] => [~a] (~a)~%:~a:~%:~a:~%~%##~%"
 		  (fourth rule) (fifth rule) (third rule) line result))
-	(trim result))
-      line))
+	(values (trim result) matchp))
+      (values line nil)))
 
 (defun apply-rules (rules line)
-  (let ((result line))
-    (dolist (rule rules result)
-      (setf result (apply-rule rule result)))))
+  (let ((result line)
+	(applied nil))
+    (loop for rule in rules
+	  for x from 0 
+	  do (multiple-value-bind (res matchp)
+		 (apply-rule rule result)
+	       (setf result res)
+	       (if matchp (push x applied))))
+    (values result applied)))
 
-(defun process-file (rules filename-in filename-out)
-  (with-open-files ((in filename-in :direction :input)
+(defun process-file (rules filename-in filename-out &optional (filename-log "out.log"))
+  (with-open-files ((in  filename-in  :direction :input)
+		    (log filename-log :direction :output :if-exists :append :if-does-not-exist :create)
 		    (out filename-out :direction :output :if-exists :supersede))
     (do ((line (read-line in nil)
-	       (read-line in nil)))
+	       (read-line in nil))
+	 (linen 0 (+ 1 linen)))
 	((null line))
-      (write-line (apply-rules rules (trim line)) out))))
+      (multiple-value-bind (output applied)
+	  (apply-rules rules (trim line))
+	(format log "~a ~a ~{~a ~}~%" filename-in linen applied)
+	(write-line output out)))))
 
-;; (defmacro define-rule (&rest args)
-;;   (let* ((pos (position '=> args))
-;;          (lhs (subseq args 0 pos))
-;;          (rhs (subseq args (1+ pos))))
-;;     `(push (cons (quote ,lhs) (quote ,rhs)) *grammar*)))
+
+(defun read-rules (filename)
+  (with-open-file (stream filename)
+    (loop for i = (read stream nil) while i collect i)))
+
+
+(defun compile-rules (rules)
+  (let (grammar)
+    (dolist (r rules (reverse grammar))
+      (case (car r)
+	((->)  (push (compile-rule (cdr r)) grammar))
+	((r->) (push (compile-regex-rule (cdr r)) grammar))))))
+
+
+(defun save-grammar-doc (grammar filename)
+  (let* ((len (length grammar))
+	 (agrammar (make-array len :initial-contents grammar)))
+    (with-open-file (out filename :direction :output :if-exists :supersede)
+      (dotimes (r len)
+	(let ((rule (aref agrammar r)))
+	  (format out "[~a] ~a => ~a~%" r (cadr rule) (caddr rule)))))))
+
+
+(defun tabulate-log (in-name out-name)
+  (with-open-files ((out out-name :direction :output :if-exists :supersede)
+		    (in in-name))
+    (do ((line (read-line in nil nil)
+	       (read-line in nil nil)))
+	((null line))
+      (let ((data (split-sequence #\Space line)))
+	(mapcar (lambda (id) (format out "~a ~a ~a~%" (car data) (cadr data) id))
+		(cddr data))))))
+
+
 
