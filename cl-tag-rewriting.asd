@@ -1,5 +1,5 @@
 
-(asdf:defsystem #:cl-pcp
+(asdf:defsystem #:cl-tag-rewriting
   :serial t
   :version "0.0.2"
   :description "Common Lisp corpus tags rewriting system"

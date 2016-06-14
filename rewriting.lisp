@@ -1,9 +1,19 @@
 
-(in-package :string-rewriting)
+(in-package :cl-tag-rewriting)
 
 (defparameter *special-chars* "([\\=\\|\\-\\.\\?\\]\\[\\)\\(])")
 (defparameter *debug-rules* nil)
 (defparameter *debug-compilation* nil)
+
+
+(defun duplicates (lst &optional acc)
+  (cond ((null lst)
+	 acc)
+        ((member (car lst) (cdr lst) :test #'equal)
+         (duplicates (remove (car lst) lst :test #'equal)
+		     (cons (car lst) acc)))
+        (t
+         (duplicates (cdr lst) acc))))
 
 
 (defmacro with-open-files (args &body body)
@@ -64,7 +74,8 @@
            (valid-side (side)
              (every #'identity (mapcar #'valid-token (parse-side side)))))
     (and (valid-length rule)
-	 (valid-side (car rule)) (valid-side (cadr rule)))))
+	 (valid-side (car rule))
+	 (valid-side (cadr rule)))))
 
 (defun valid-regex-rule (rule)
   (valid-length rule))

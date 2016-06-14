@@ -1,5 +1,5 @@
 
-(in-package :string-rewriting)
+(in-package :cl-tag-rewriting)
 
 
 (defun write-conllu-lines (sent out)

@@ -1,5 +1,5 @@
 
-(in-package :string-rewriting)
+(in-package :cl-tag-rewriting)
 
 (defun test-rule (rule input expected)
   (test-rules (list rule) input expected))
@@ -8,7 +8,6 @@
   (let ((result (apply-rules (compile-rules rules) input)))
     (unless (string-equal result expected)
       (format t "Expected [~a] got [~a]~%" expected result))))
-
 
 
 (defun test-multiple-rules ()
