@@ -1,0 +1,13 @@
+#+Title: CL-TAG-Rewriting 
+
+Rule based string rewriting system for change the tagset of corpora.
+
+* Team
+
+- Alexandre Rademaker
+- Fabricio Chalub
+
+* License 
+
+See LICENSE file.
+
